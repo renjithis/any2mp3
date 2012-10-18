@@ -1,0 +1,166 @@
+#!/bin/bash
+#
+# This is a script that comverts any file(audio/audio+video) to mp3 format.
+# To run this script, you will need mplayer and lame.
+# This script is only effective if the above mensioned file is 
+# playable in mplayer.
+#
+# Script author : Renjith I S
+# Webpage : renjithis.co.cc, renjithis.co.nr
+#
+# You are free to modify this script and to make it better.
+# If you have done so and if you think you have made the script
+# better, please mail me a copy of it.
+# The comments provided in the script is for debugging and further development.
+# I would also appreciate any corrections and suggestions,
+# but i cant promise you that i would be able to implement it because of my
+# lack of knowledge in scripting.
+# Feel free to contact me for any information.
+#
+#This script currently works for only 1 file/all files in d directory...... 
+# I would try to make it work for batch conversion like specifying with 
+# wild card characters.....
+# but as said above, im not an expert in scripting.
+#
+#
+#Syntax is
+#  For single file conversion:
+#
+#        $any2mp3 <filename>
+#
+#            OR
+#  For all files in the current directory:
+#
+#        $any2mp3 
+#
+#
+
+
+#to define fname as global = filename
+fname=$1
+
+removeTemp()
+{
+# remove temporary files
+ echo
+ echo "Removing Temporary Files"
+ sleep 1
+ rm -f /tmp/$newname
+ rm -f audiodump.wav 
+ rm -f /tmp/temp
+}
+
+
+convert()
+{
+# remove spaces from filename
+ newname=`echo $fname | tr ' ' '_'`
+ oldname=$fname
+ cp "$fname" /tmp/$newname
+
+ echo ""
+ echo "Processing File :$oldname"
+ echo ""
+ echo ""
+
+# convert to wav
+ mplayer -vo null -vc dummy -ao pcm:waveheader /tmp/$newname -msglevel all=5 2>/dev/null | grep -iA 7 title >/tmp/temp
+
+# exit if error
+# x=$?
+# if [[ $x -gt 1 ]];
+# then
+#  echo "Error : Could not play the file"
+#  echo "Make sure that the file is playable in mplayer"
+#  echo "Exit code = $x"
+#  removeTemp
+#  exit $x
+# fi
+
+# get song details
+ filetitle=`grep -i title /tmp/temp`
+ filetitle=`echo ${filetitle#*:}`
+ 
+ fileartist=`grep -i artist /tmp/temp`
+ fileartist=`echo ${fileartist#*:}`
+
+ filealbum=`grep -i album /tmp/temp`
+ filealbum=`echo ${filealbum#*:}`
+
+ filegenre=`grep -i genre /tmp/temp`
+ filegenre=`echo ${filegenre#*:}`
+
+ fileyear=`grep -i year /tmp/temp`
+ fileyear=`echo ${fileyear#*:}`
+
+ filecomm=`grep -i comment /tmp/temp`
+ filecomm=`echo ${filecomm#*:}`
+
+ filetrack=`grep -i track /tmp/temp`
+ filetrack=`echo ${filetrack#*:}`
+
+# convert wav to mp3
+ lame -b 192 audiodump.wav /tmp/temp.mp3 --tt "$filetitle" --tl "$filealbum" --ta "$fileartist" --tg "$filegenre" --ty "$fileyear" --tc "$filecomm" --tn "$filetrack" >/dev/null
+
+# check if error
+ x=$?
+ if [[ $x -ne 0 ]];
+ then
+  echo "Error : Could not convert the file"
+  echo "Make sure that lame is installed and of the latest available version"
+  echo "Exit code = $x"
+  removeTemp
+  exit $x
+ fi
+
+# rename mp3 file to <oldname>.mp3
+ mv /tmp/temp.mp3 "conv_mp3/${oldname%.*}.mp3"
+ echo
+ echo
+ echo "Converting \"$oldname\" to mp3 has completed"
+
+}
+
+if test $# -gt 1
+then 
+# Print Help Page
+ echo -e "\nWrong Syntax\n
+Syntax is 
+  For single file conversion:\n 
+        \$any2mp3 <filename>\n 
+            OR 
+  For all files in the current directory:\n
+        \$any2mp3 \n\n" 
+exit 1
+fi
+
+# removes d temp files used if any were left over in unclean exit previously
+ls audiodump.wav 2>/dev/null && rm -f audiodump.wav
+ls /tmp/temp 2>/dev/null && rm -f /tmp/temp
+#removeTemp
+
+mkdir conv_mp3 2>/dev/null
+#decides if single file or d whole directory
+if test $# -eq 1
+then
+
+# get filename
+ fname=$1
+ convert
+else
+ 
+# convert all files in d current directory 
+ for fname in *.*
+ do
+  convert
+ done
+
+fi
+
+#remove temp files
+removeTemp
+
+echo
+echo "Finished Processing File..... Thank You for using Renjith's script"
+echo -e "\nAll files can be found in \"conv_mp3\"\n"
+sleep 0.5
